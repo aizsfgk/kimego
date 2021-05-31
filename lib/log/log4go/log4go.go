@@ -72,6 +72,25 @@ type LogCloser struct {
 	IsEnd chan bool
 }
 
+func (lc *LogCloser) LogCloserInit() {
+	lc.IsEnd = make(chan bool)
+}
+
+func (lc *LogCloser) EndNotify(lr *LogRecord) bool {
+	if lr == nil && lc.IsEnd != nil {
+		lc.IsEnd <- true
+		return true
+	}
+	return false
+}
+
+func (lc *LogCloser) WaitForEnd(rec chan *LogRecord) {
+	rec <- nil
+	if lc.IsEnd != nil {
+		<-lc.IsEnd
+	}
+}
+
 func (log Logger) AddFilter(name string, lvl LevelType, writer LogWriter) Logger {
 	log[name] = &Filter{lvl, writer}
 	return log
