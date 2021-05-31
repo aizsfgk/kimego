@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sync"
 
-	"kimego/lib/log/log4go"
+	"github.com/aizsfgk/kimego/lib/log/log4go"
 )
 
 var (
