@@ -19,5 +19,5 @@ func TestLog(t *testing.T) {
 		Logger.Info("info msg: %d", i)
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 }
