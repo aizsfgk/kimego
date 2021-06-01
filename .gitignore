@@ -1,3 +1,4 @@
 .idea
 .idea/kimego.iml
 lib/log/log
+example/log/log

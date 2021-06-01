@@ -2,11 +2,20 @@ package log4go
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
+
+	"github.com/aizsfgk/kimego/lib/strftime"
+)
+
+const (
+	MIDNIGHT = 24 * 60 * 60
+	NEXTHOUT = 60 * 60
 )
 
 type TimeFileLogWriter struct {
@@ -90,6 +99,7 @@ func NewTimeFileLogWriter(fileName, when string, backupCount int) *TimeFileLogWr
 		fmt.Fprintf(os.Stderr, "NewTimeFileLogWriter(%q): %s\n", w.filename, err)
 		return nil
 	}
+
 	go func() {
 		defer func() {
 			if w.file != nil {
@@ -101,13 +111,11 @@ func NewTimeFileLogWriter(fileName, when string, backupCount int) *TimeFileLogWr
 			if w.EndNotify(rec) {
 				return
 			}
-
 			if w.shouldRollover() {
 				if err := w.initRotate(); err != nil {
 					return
 				}
 			}
-
 			var err error
 			if rec.Binary != nil {
 				_, err = w.file.Write(rec.Binary)
@@ -116,6 +124,7 @@ func NewTimeFileLogWriter(fileName, when string, backupCount int) *TimeFileLogWr
 			}
 
 			if err != nil {
+				fmt.Fprintf(os.Stderr, "NewTimeFileLogWriter goroutine err: %s\n", err.Error())
 				return
 			}
 		}
@@ -135,7 +144,108 @@ func (w *TimeFileLogWriter) shouldRollover() bool {
 }
 
 func (w *TimeFileLogWriter) initRotate() error {
+	if w.file != nil {
+		w.file.Close()
+	}
 
+	if w.shouldRollover() {
+		if err := w.moveToBackup(); err != nil {
+			return err
+		}
+	}
+
+	// remove files, according to backupCount
+	if w.backupCount > 0 {
+		for _, fileName := range w.getFilesToDelete() {
+			os.Remove(fileName)
+		}
+	}
+
+	// open the log file
+	fd, err := os.OpenFile(w.filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	w.file = fd
+
+	w.adjustRolloverAt()
+
+	return nil
+}
+
+// moveToBackup renames file to backup name
+func (w *TimeFileLogWriter) moveToBackup() error {
+	_, err := os.Lstat(w.filename)
+	if err != nil { // file exists
+
+		// get the time that this sequence started at and make it a TimeTuple
+		t := time.Unix(w.rolloverAt-w.interval, 0).Local()
+		fname := w.baseFilename + "." + strftime.Format(w.suffix, t)
+
+		// remove the file with fname if exist
+		if _, err = os.Stat(fname); err == nil {
+			err = os.Remove(fname)
+			if err != nil {
+				return fmt.Errorf("moveToBackup err : %s\n", err.Error())
+			}
+		}
+
+		// rename the file to it's new found home
+		err = os.Rename(w.baseFilename, fname)
+		if err != nil {
+			return fmt.Errorf("moveToBackup err: %s\n", err.Error())
+		}
+
+	}
+	return nil
+}
+
+// getFilesToDelete determines the files to delte when rolling over
+func (w *TimeFileLogWriter) getFilesToDelete() []string {
+	dirName := filepath.Dir(w.baseFilename)
+	baseName := filepath.Base(w.baseFilename)
+
+	result := []string{}
+	fileInfos, err := ioutil.ReadDir(dirName)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
+		return result
+	}
+
+	prefix := baseName + "."
+	plen := len(prefix)
+
+	for _, fileInfo := range fileInfos {
+		fileName := fileInfo.Name()
+		if len(fileName) >= plen {
+			if fileName[:plen] == prefix {
+				suffix := fileName[plen:]
+				if w.fileFilter.MatchString(suffix) {
+					result = append(result, filepath.Join(dirName, fileName))
+				}
+			}
+		}
+	}
+
+	sort.Sort(sort.StringSlice(result)) // 对文件进行排序
+
+	if len(result) < w.backupCount {
+		result = result[0:0]
+	} else {
+		result = result[:len(result)-w.backupCount]
+	}
+	return result
+}
+
+// 调整下次切割时间
+func (w *TimeFileLogWriter) adjustRolloverAt() {
+	curTime := time.Now()
+	newRolloverAt := w.computeRollover(curTime)
+
+	for newRolloverAt <= curTime.Unix() {
+		newRolloverAt = newRolloverAt + w.interval
+	}
+	w.rolloverAt = newRolloverAt
 }
 
 func (w *TimeFileLogWriter) prepare() {
@@ -173,9 +283,13 @@ func (w *TimeFileLogWriter) prepare() {
 func (w *TimeFileLogWriter) computeRollover(curTime time.Time) int64 {
 	var result int64
 	if w.when == "MIDNIGHT" {
-
+		t := curTime.Local()
+		r := MIDNIGHT - (t.Hour()*60 + t.Minute()*60 + t.Second())
+		result = curTime.Unix() + int64(r)
 	} else if w.when == "NEXTHOUR" {
-
+		t := curTime.Local()
+		r := NEXTHOUT - (t.Minute()*60 + t.Second())
+		result = curTime.Unix() + int64(r)
 	} else {
 		result = curTime.Unix() + w.interval
 	}

@@ -57,7 +57,7 @@ func Create(proname string, levelStr string, logDir string,
 		logger.AddFilter("stdout", level, log4go.NewConsoleLogWriter())
 	}
 
-	//
+	// default file
 	fileName := filenameGen(proname, logDir, false)
 	logWriter := log4go.NewTimeFileLogWriter(fileName, when, backupCount)
 	if logWriter == nil {
@@ -66,7 +66,16 @@ func Create(proname string, levelStr string, logDir string,
 	logWriter.SetFormat(log4go.LogFormat)
 	logger.AddFilter("log", level, logWriter)
 
-	return nil, nil
+	// warning level up file
+	fileNameW := filenameGen(proname, logDir, true)
+	logWriterW := log4go.NewTimeFileLogWriter(fileNameW, when, backupCount)
+	if logWriterW == nil {
+		return nil, fmt.Errorf("error in log4go.NewTimeFileLogWriter(%s)", fileNameW)
+	}
+	logWriterW.SetFormat(log4go.LogFormat)
+	logger.AddFilter("log_wf", log4go.WARNING, logWriterW)
+
+	return logger, nil
 
 }
 
@@ -85,7 +94,7 @@ func filenameGen(progName, logDir string, isErrLog bool) string {
 
 	var fileName string
 	if isErrLog {
-		fileName = filepath.Join(logDir, progName+"wf.log")
+		fileName = filepath.Join(logDir, progName+".wf.log")
 	} else {
 		fileName = filepath.Join(logDir, progName+".log")
 	}

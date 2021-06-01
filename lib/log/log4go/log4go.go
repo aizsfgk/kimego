@@ -3,7 +3,9 @@ package log4go
 import (
 	"errors"
 	"fmt"
+	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -35,6 +37,8 @@ var (
 var (
 	LogBufferLength = 1024
 	LogWithBlocking = true
+	LogFormat       = FORMAT_DEFAULT
+	LogProcessId    = "0"
 )
 
 type LogRecord struct {
@@ -94,6 +98,21 @@ func (lc *LogCloser) WaitForEnd(rec chan *LogRecord) {
 func (log Logger) AddFilter(name string, lvl LevelType, writer LogWriter) Logger {
 	log[name] = &Filter{lvl, writer}
 	return log
+}
+
+func setLogProcessId() {
+	LogProcessId = strconv.Itoa(os.Getpid())
+}
+
+func SetLogFormat(format string) {
+	LogFormat = format
+	if strings.Contains(LogFormat, "%P") {
+		setLogProcessId()
+	}
+}
+
+func SetLogBufferLength(bufferLen int) {
+	LogBufferLength = bufferLen
 }
 
 func (log Logger) Warn(arg0 interface{}, args ...interface{}) error {
