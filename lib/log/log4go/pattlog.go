@@ -50,7 +50,7 @@ func FormatLogRecord(format string, lr *LogRecord) string {
 	out := newBuf()
 	defer putBuf(out)
 
-	secs := lr.Created.Unix() / 1e9
+	secs := lr.Created.UnixNano() / 1e9
 
 	formatMutex.Lock()
 	cache := *formatCache

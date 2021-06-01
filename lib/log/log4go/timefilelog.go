@@ -136,6 +136,7 @@ func NewTimeFileLogWriter(fileName, when string, backupCount int) *TimeFileLogWr
 
 func (w *TimeFileLogWriter) shouldRollover() bool {
 	t := time.Now().Unix()
+
 	if t >= w.rolloverAt {
 		return true
 	} else {
@@ -176,8 +177,7 @@ func (w *TimeFileLogWriter) initRotate() error {
 // moveToBackup renames file to backup name
 func (w *TimeFileLogWriter) moveToBackup() error {
 	_, err := os.Lstat(w.filename)
-	if err != nil { // file exists
-
+	if err == nil { // file exists
 		// get the time that this sequence started at and make it a TimeTuple
 		t := time.Unix(w.rolloverAt-w.interval, 0).Local()
 		fname := w.baseFilename + "." + strftime.Format(w.suffix, t)

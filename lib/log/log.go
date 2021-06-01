@@ -73,7 +73,7 @@ func Create(proname string, levelStr string, logDir string,
 		return nil, fmt.Errorf("error in log4go.NewTimeFileLogWriter(%s)", fileNameW)
 	}
 	logWriterW.SetFormat(log4go.LogFormat)
-	logger.AddFilter("log_wf", log4go.WARNING, logWriterW)
+	logger.AddFilter("log_wf", log4go.WARN, logWriterW)
 
 	return logger, nil
 
@@ -113,8 +113,8 @@ func stringToLevel(levelStr string) log4go.LevelType {
 		level = log4go.TRACE
 	case "INFO":
 		level = log4go.INFO
-	case "WARNING":
-		level = log4go.WARNING
+	case "WARN":
+		level = log4go.WARN
 	case "ERROR":
 		level = log4go.ERROR
 	case "FATAL":
