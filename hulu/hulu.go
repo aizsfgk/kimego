@@ -3,8 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
+	"path"
 	"runtime"
 	"time"
+
+	"github.com/aizsfgk/kimego/hulu/hulu_config/hulu_conf"
+	"github.com/aizsfgk/kimego/hulu/hulu_debug"
+	"github.com/aizsfgk/kimego/hulu/hulu_server"
 
 	"github.com/aizsfgk/kimego/lib/log"
 	"github.com/aizsfgk/kimego/lib/log/log4go"
@@ -13,13 +18,13 @@ import (
 // 应用层流量转发系统
 
 var (
-	help        *bool   = flag.Bool("h", false, "show help")
-	confRoot    *string = flag.String("c", "./conf", "root path of config")
-	logPath     *string = flag.String("l", "./log", "dir path of log")
-	debugLog    *bool   = flag.Bool("d", false, "show debug lgo")
-	stdOut      *bool   = flag.Bool("s", false, "show log in stdout")
-	showVersion *bool   = flag.Bool("v", false, "show version of hulu")
-	showVerbose *bool   = flag.Bool("V", false, "show verbose of hulu")
+	help        = flag.Bool("h", false, "show help")
+	confRoot    = flag.String("c", "./conf", "root path of config")
+	logPath     = flag.String("l", "./log", "dir path of log")
+	debugLog    = flag.Bool("d", false, "show debug lgo")
+	stdOut      = flag.Bool("s", false, "show log in stdout")
+	showVersion = flag.Bool("v", false, "show version of hulu")
+	showVerbose = flag.Bool("V", false, "show verbose of hulu")
 )
 
 var version string
@@ -30,6 +35,7 @@ func main() {
 	var (
 		err      error
 		logLevel string
+		config   hulu_conf.HuluConfig
 	)
 
 	flag.Parse()
@@ -56,9 +62,11 @@ func main() {
 		logLevel = "DEBUG"
 
 		// debug service
+		hulu_debug.DebugIsOpen = true
 
 	} else {
 		logLevel = "INFO"
+		hulu_debug.DebugIsOpen = false
 	}
 
 	// 日志初始化
@@ -73,10 +81,17 @@ func main() {
 	log.Logger.Info("hulu[version:%s] start", version)
 
 	// 加载配置
+	confPath := path.Join(*confRoot, "hulu.conf")
+	config, err = hulu_conf.HuluConfigLoad(confPath, *confRoot)
+	if err != nil {
+		log.Logger.Error("main() in hulu_conf.HuluConfigLoad(): %s", err.Error())
+		return
+	}
 
 	// 调试配置
 
 	// 启动服务
+	hulu_server.StartUp(config, version, *confRoot)
 
 	// 等待logger finish
 	time.Sleep(1 * time.Second)
