@@ -35,10 +35,10 @@ var (
 )
 
 var (
-	LogBufferLength = 1024
-	LogWithBlocking = true
-	LogFormat       = FORMAT_DEFAULT
-	LogProcessId    = "0"
+	LogBufferLength    = 1024
+	LogWithBlocking    = true
+	LogFormat          = FORMAT_DEFAULT
+	LogProcessId       = "0"
 	EnableSrcForBinLog = true
 )
 
@@ -93,6 +93,14 @@ func (lc *LogCloser) WaitForEnd(rec chan *LogRecord) {
 	rec <- nil
 	if lc.IsEnd != nil {
 		<-lc.IsEnd
+	}
+}
+
+func (log Logger) Close() {
+	// Close all open loggers
+	for name, filt := range log {
+		filt.Close()
+		delete(log, name)
 	}
 }
 
@@ -185,7 +193,7 @@ func (log Logger) intLogc(lvl LevelType, closure func() string) {
 		Created: time.Now(),
 		Source:  src,
 		Message: closure(),
-		Binary: nil,
+		Binary:  nil,
 	}
 
 	// Dispatch the logs
@@ -348,7 +356,7 @@ func (log Logger) Error(arg0 interface{}, args ...interface{}) error {
 	return errors.New(msg)
 }
 
-func (log Logger) Fatal(arg0 interface{}, args ...interface{}) error  {
+func (log Logger) Fatal(arg0 interface{}, args ...interface{}) error {
 	const (
 		lvl = FATAL
 	)
