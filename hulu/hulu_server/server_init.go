@@ -8,5 +8,11 @@ import (
 func StartUp(cfg hulu_conf.HuluConfig, version string, confRoot string) error {
 	log.Logger.Info("服务器启动")
 
+	// 加载模块
+
+	// 模块化配置
+
+	// 服务启动
+
 	return nil
 }
