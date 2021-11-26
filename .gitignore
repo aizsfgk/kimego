@@ -4,3 +4,5 @@ lib/log/log
 example/log/log
 hulu/log
 hulu/output
+kimenet/log
+kimenet/output
